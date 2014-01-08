@@ -1,5 +1,6 @@
 #include <Python.h>
 #include "wkhtmltox/pdf.h"
+#include <stdio.h>
 
 #define DEFAULT_BUF_LEN	255
 
@@ -78,12 +79,14 @@ static PyObject* PDFConvertor_set_global(PDFConvertor *self, PyObject *args)
   
 	if (!PyArg_ParseTuple(args, "ss", &key, &value))
 	{
-		PyErr_SetNone(PyExc_KeyError);
+		PyErr_BadArgument();
+		return NULL;
 	}
   
 	if (!wkhtmltopdf_set_global_setting(self->conv_global, key, value))
 	{
 		PyErr_SetNone(PyExc_KeyError);
+		return NULL;
 	}
 	Py_RETURN_NONE;
 }
@@ -97,15 +100,17 @@ static PyObject* PDFConvertor_get_global(PDFConvertor *self, PyObject *args)
   
 	if (!PyArg_ParseTuple(args, "s", &key))
 	{
-		PyErr_SetNone(PyExc_KeyError);
+		PyErr_BadArgument();
+		return NULL;
 	}
 	if (!wkhtmltopdf_get_global_setting(self->conv_global, key, value, DEFAULT_BUF_LEN))
 	{
 		PyErr_SetNone(PyExc_KeyError);
+		return NULL;
 	}
 	
 	result = Py_BuildValue("s", value);
-	Py_INCREF(result);
+	Py_XINCREF(result);
 	
 	return result;
 }
@@ -113,14 +118,14 @@ static PyObject* PDFConvertor_get_global(PDFConvertor *self, PyObject *args)
 static PyObject *PDFConvertor_convert(PDFConvertor *self)
 {
 	int result_code = 0;
-	char error_msg[20];
 	
 	if (!wkhtmltopdf_convert(self->conv_ptr))
 	{
 		result_code = wkhtmltopdf_http_error_code(self->conv_ptr);
 		char error_msg[40];
-		sprintf(error_msg, "%s %i", "Convert error: ", result_code);
+		snprintf(error_msg, 40, "Convert error: %i", result_code);
 		PyErr_SetString(PyExc_Exception, error_msg);
+		return NULL;
 	}
 	
 	Py_RETURN_NONE;
@@ -133,11 +138,13 @@ static PyObject *PDFConvertor_add_object(PDFConvertor *self, PyObject *args)
 	
 	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &dict)) {
 		PyErr_SetString(PyExc_AttributeError, "Invalid attributes");
+		return NULL;
 	}
 	
 	if (NULL == (settings = wkhtmltopdf_create_object_settings()))
 	{
 		PyErr_SetString(PyExc_Exception, "Can't create object settings");
+		return NULL;
 	}
 	
 	PyObject *key, *value;
@@ -147,9 +154,10 @@ static PyObject *PDFConvertor_add_object(PDFConvertor *self, PyObject *args)
 	{
 		if (!wkhtmltopdf_set_object_setting(settings, PyString_AsString(key), PyString_AsString(value)))
 		{
-			char error_msg[40];
-			sprintf(error_msg, "%s %s=%s", "Invalid attribute: ", PyString_AsString(key), PyString_AsString(value));
+			char error_msg[80];
+			snprintf(error_msg, 80, "Invalid attribute: %s=%s", PyString_AsString(key), PyString_AsString(value));
 			PyErr_SetString(PyExc_AttributeError, error_msg);
+			return NULL;
 		}
 	}
 	
@@ -216,7 +224,7 @@ static PyMethodDef wkhtmltox_methods[] = {
 };
 
 PyMODINIT_FUNC
-initwkhtmltox(void) 
+initpywkhtmltox(void) 
 {
 	PyObject* m;
 
