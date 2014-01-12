@@ -1,16 +1,9 @@
 #include <Python.h>
 #include "wkhtmltox/pdf.h"
 #include <stdio.h>
+#include "callback.h"
 
 #define DEFAULT_BUF_LEN	255
-
-typedef struct {
-	wkhtmltopdf_str_callback warning_cb;
-	wkhtmltopdf_str_callback error_cb;
-	wkhtmltopdf_int_callback finish_cb;
-	wkhtmltopdf_int_callback progress_cb;
-	wkhtmltopdf_void_callback phase_cb;
-} convertor_callbacks_t;
 
 typedef struct {
 	PyObject_HEAD;
@@ -22,6 +15,7 @@ typedef struct {
 
 static void PDFConvertor_dealloc(PDFConvertor *self)
 {
+	clean_all(self->conv_ptr);
 	wkhtmltopdf_destroy_converter(self->conv_ptr);
 	self->ob_type->tp_free((PyObject*)self);
 	wkhtmltopdf_deinit();
@@ -167,11 +161,60 @@ static PyObject *PDFConvertor_add_object(PDFConvertor *self, PyObject *args)
 }
 
 
+static void wkhtmltopdf_callback_finished(wkhtmltopdf_converter *converter, const int val)
+{
+	PyObject *callback = get_callback(PDF_CALLBACK_FINISH, converter);
+	PyObject *arglist;
+	
+	if (callback)
+	{
+		arglist = Py_BuildValue("(i)", val);
+		if (NULL == PyObject_CallObject(callback, arglist))
+		{
+			Py_DECREF(callback);
+			del_callback(PDF_CALLBACK_FINISH, converter);
+			PyErr_SetString(PyExc_Exception, "Callback failed");
+			return NULL;
+		}
+		Py_DECREF(callback);
+		del_callback(PDF_CALLBACK_FINISH, converter);
+	}
+}
+
+
+
+static PyObject *PDFConvertor_add_finished_callback(PDFConvertor *self, PyObject *args)
+{
+	PyObject *callback;
+
+	if (!PyArg_ParseTuple(args, "O:set_finish_callback", &callback))
+	{
+    	PyErr_BadArgument();
+		return NULL;
+	}
+	
+	if (!PyCallable_Check(callback))
+	{
+		PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+		return NULL;
+	}
+	
+	Py_INCREF(callback);
+	
+	add_callback(PDF_CALLBACK_FINISH, self->conv_ptr, callback);
+	wkhtmltopdf_set_finished_callback(self->conv_ptr, wkhtmltopdf_callback_finished);
+	
+	return Py_None;
+}
+
+
+
 static PyMethodDef PDFConvertor_methods[] = {
     {"set_option", (PyCFunction)PDFConvertor_set_global, METH_VARARGS, "Set global option"},
     {"get_option", (PyCFunction)PDFConvertor_get_global, METH_VARARGS, "Get global option"},
     {"convert", (PyCFunction)PDFConvertor_convert, METH_NOARGS, "Convert pdf"},
     {"add_object", (PyCFunction)PDFConvertor_add_object, METH_VARARGS, "Add object"},
+    {"add_finished_callback", (PyCFunction)PDFConvertor_add_finished_callback, METH_VARARGS, "Add finish callback"},
     {NULL}  /* Sentinel */
 };
 
