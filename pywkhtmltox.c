@@ -5,6 +5,8 @@
 
 #define DEFAULT_BUF_LEN	255
 
+//extern PyObject* PDFConvertorError;
+
 typedef struct {
 	PyObject_HEAD;
 	wkhtmltopdf_global_settings *conv_global;
@@ -174,7 +176,7 @@ static void wkhtmltopdf_callback_finished(wkhtmltopdf_converter *converter, cons
 			Py_DECREF(callback);
 			del_callback(PDF_CALLBACK_FINISH, converter);
 			PyErr_SetString(PyExc_Exception, "Callback failed");
-			return NULL;
+			return;
 		}
 		Py_DECREF(callback);
 		del_callback(PDF_CALLBACK_FINISH, converter);
@@ -223,7 +225,7 @@ static PyTypeObject PDFConvertorType = {
 	PyObject_HEAD_INIT(NULL)
 	0,                         /*ob_size*/
 	"pywkhtmltox.PDFConvertor",             /*tp_name*/
-	sizeof(PDFConvertorType),             /*tp_basicsize*/
+	sizeof(PDFConvertor),             /*tp_basicsize*/
 	0,                         /*tp_itemsize*/
 	(destructor)PDFConvertor_dealloc, /*tp_dealloc*/
 	0,                         /*tp_print*/
@@ -262,6 +264,129 @@ static PyTypeObject PDFConvertorType = {
 };
 
 
+typedef struct {
+    PyDictObject dict;
+    wkhtmltopdf_global_settings *settings;
+} PDFConvertorSettings;
+
+
+static int
+PDFConvertorSettings_init(PDFConvertorSettings *self, PyObject *args, PyObject *kwds)
+{
+    if (PyDict_Type.tp_init((PyObject *)self, args, kwds) < 0)
+       return -1;
+	
+	if (NULL == (self->settings = wkhtmltopdf_create_global_settings()))
+	{
+		return -1;
+	}
+    return 0;
+}
+
+static PyObject* PDFConvertor_settings_getitem(PDFConvertorSettings *self, PyObject *key)
+{
+    PyObject * ret;
+    if (NULL == (ret = PyDict_GetItem((PyObject *)self, key))) {
+       PyErr_SetString(PyExc_KeyError, PyString_AsString(key));
+       return NULL;
+    }
+    return ret;
+}
+
+
+static int PDFConvertor_settings_setdelitem(PDFConvertorSettings *self, PyObject *key, PyObject *value)
+{	
+	if (!PyDict_Check(self)) {
+		PyErr_BadInternalCall();
+		return -1;
+	}
+
+    if (value == NULL)
+    {
+        return PyDict_DelItem((PyObject *)self, key);
+    }
+
+		
+	if (wkhtmltopdf_set_global_setting(self->settings, PyString_AsString(key), PyString_AsString(value)))
+	{
+        return PyDict_SetItem((PyObject *) self, key, value);
+	}
+	
+	PyErr_SetString(PyExc_KeyError, PyString_AsString(key));
+		
+	return -1;
+}
+
+
+static PyMethodDef PDFConvertorSettingsMethods[] = {
+    //{"__setitem__", (PyCFunction)PDFConvertor_settings_setitem, METH_VARARGS, "Set global option"},
+    {NULL}
+};
+
+//static Py_ssize_t PDFConvertorSettingsLenght(PyDictObject *self)
+//{
+//	return PyDict_Size(self);
+//}
+
+
+
+
+static PyMappingMethods PDFConvertorSettingsMappingMethods = {
+	(lenfunc)PyDict_Size,
+	(binaryfunc)PDFConvertor_settings_getitem,
+	(objobjargproc)PDFConvertor_settings_setdelitem,
+};
+
+
+
+static PyTypeObject PDFConvertorSettingsType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                       /* ob_size */
+    "pywkhtmltox.PDFSettings",         /* tp_name */
+    sizeof(PDFConvertorSettings),          /* tp_basicsize */
+    0,                       /* tp_itemsize */
+    0,                       /* tp_dealloc */
+    0,                       /* tp_print */
+    0,                       /* tp_getattr */
+    0,                       /* tp_setattr */
+    0,                       /* tp_compare */
+    0,                       /* tp_repr */
+    0,                       /* tp_as_number */
+    0,                       /* tp_as_sequence */
+    &PDFConvertorSettingsMappingMethods,                       /* tp_as_mapping */
+    0,                       /* tp_hash */
+    0,                       /* tp_call */
+    0,                       /* tp_str */
+    0,                       /* tp_getattro */
+    0,                       /* tp_setattro */
+    0,                       /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT |
+      Py_TPFLAGS_BASETYPE,  /* tp_flags */
+    0,                       /* tp_doc */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    0,                       /* tp_iter */
+    0,                       /* tp_iternext */
+    PDFConvertorSettingsMethods,          /* tp_methods */
+    0,                       /* tp_members */
+    0,                       /* tp_getset */
+    0,                       /* tp_base */
+    0,                       /* tp_dict */
+    0,                       /* tp_descr_get */
+    0,                       /* tp_descr_set */
+    0,                       /* tp_dictoffset */
+    (initproc)PDFConvertorSettings_init,   					/* tp_init */
+    0,                       /* tp_alloc */
+    0,                       /* tp_new */
+};
+
+
+
+
+
+
 static PyMethodDef wkhtmltox_methods[] = {
 	{NULL}  /* Sentinel */
 };
@@ -274,10 +399,20 @@ initpywkhtmltox(void)
 	PDFConvertorType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&PDFConvertorType) < 0)
 		return;
+	
+	PDFConvertorSettingsType.tp_base = &PyDict_Type;
+	if (PyType_Ready(&PDFConvertorSettingsType) < 0)
+		return;
 
 	m = Py_InitModule3("pywkhtmltox", wkhtmltox_methods,
 						"Wkhtmltox python module");
+	
+	//PDFConvertorError = PyErr_NewException("pywkhtmltox.OperationFailedError", NULL, NULL);
+	//PyModule_AddObject(m, "OperationFailedError", (PyObject*)PDFConvertorError);
 
+	//Py_INCREF(&PDFConvertorError);
 	Py_INCREF(&PDFConvertorType);
+	Py_INCREF(&PDFConvertorSettingsType);
 	PyModule_AddObject(m, "PDFConvertor", (PyObject *) &PDFConvertorType);
+	PyModule_AddObject(m, "PDFConvertorSettings", (PyObject *) &PDFConvertorSettingsType);
 }
