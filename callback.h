@@ -19,4 +19,10 @@ typedef enum {
 	PDF_CALLBACK_PHASE
 } callback_type_t;
 
+void callback_finished(void *conv, const int val);
+void callback_error(void *conv, const char *msg);
+void callback_progress_changed(void *conv, int val);
+void callback_warning(void *conv, const char *msg);
+void callback_phase_changed(void *conv);
+
 #endif /* __CALLBACK_H__ */

@@ -4,7 +4,7 @@
 #include "pdfconv.h"
 #include "register_conv.h"
 
-static void callback_finished(void *conv, const int val)
+void callback_finished(void *conv, const int val)
 {
 	PDFConvertor *obj = get_registered(conv);
 	if (NULL == obj) {
@@ -31,7 +31,7 @@ static void callback_finished(void *conv, const int val)
 	}
 }
 
-static void callback_error(void *conv, const char *msg)
+void callback_error(void *conv, const char *msg)
 {
 	PDFConvertor *obj = get_registered(conv);
 	if (NULL == obj) {
@@ -58,7 +58,7 @@ static void callback_error(void *conv, const char *msg)
 	}
 }
 
-static void callback_progress_changed(void *conv, int val)
+void callback_progress_changed(void *conv, int val)
 {
 	PDFConvertor *obj = get_registered(conv);
 	if (NULL == obj) {
@@ -69,7 +69,7 @@ static void callback_progress_changed(void *conv, int val)
 
 	if (PyList_Check(obj->conv_callbacks.progress_cb))
 	{
-		arglist = Py_BuildValue("(OO)", (PyObject *)obj, (PyObject *)PyObject_CallMethod((PyObject *)obj, (char *)current_progress_method, NULL));
+		arglist = Py_BuildValue("(OO)", (PyObject *)obj, (PyObject *)PyObject_CallMethod((PyObject *)obj, CURRENT_PROGRSS_METHOD, NULL));
 		PyObject *iterator = PyObject_GetIter(obj->conv_callbacks.error_cb);
 		PyObject *item;
 		while (item = PyIter_Next(iterator))
@@ -85,7 +85,7 @@ static void callback_progress_changed(void *conv, int val)
 	}
 }
 
-static void callback_warning(void *conv, const char *msg)
+void callback_warning(void *conv, const char *msg)
 {
 	PDFConvertor *obj = get_registered(conv);
 	if (NULL == obj) {
@@ -112,7 +112,7 @@ static void callback_warning(void *conv, const char *msg)
 	}
 }
 
-static void callback_phase_changed(void *conv)
+void callback_phase_changed(void *conv)
 {
 	PDFConvertor *obj = get_registered(conv);
 	if (NULL == obj) {
@@ -123,7 +123,7 @@ static void callback_phase_changed(void *conv)
 
 	if (PyList_Check(obj->conv_callbacks.warning_cb))
 	{
-		arglist = Py_BuildValue("(OO)", (PyObject *)obj, (PyObject *)PyObject_CallMethod((PyObject *)obj, (char *)current_phase_method, NULL));
+		arglist = Py_BuildValue("(OO)", (PyObject *)obj, (PyObject *)PyObject_CallMethod((PyObject *)obj, CURRENT_PHASE_METHOD, NULL));
 		PyObject *iterator = PyObject_GetIter(obj->conv_callbacks.warning_cb);
 		PyObject *item;
 		while (item = PyIter_Next(iterator))

@@ -60,6 +60,16 @@ static int ImageConvertor_init(ImageConvertor *self, PyObject *args, PyObject *k
 	{
 		return -1;
 	}
+	self->conv_callbacks.error_cb = PyList_New(0);
+	self->conv_callbacks.finish_cb = PyList_New(0);
+	self->conv_callbacks.phase_cb = PyList_New(0);
+	self->conv_callbacks.progress_cb = PyList_New(0);
+	self->conv_callbacks.warning_cb = PyList_New(0);
+	wkhtmltoimage_set_error_callback(self->conv_ptr, callback_error);
+	wkhtmltoimage_set_finished_callback(self->conv_ptr, callback_finished);
+	wkhtmltoimage_set_phase_changed_callback(self->conv_ptr, callback_phase_changed);
+	wkhtmltoimage_set_progress_changed_callback(self->conv_ptr, callback_progress_changed);
+	wkhtmltoimage_set_warning_callback(self->conv_ptr, callback_warning);
 
     return 0;
 }
@@ -198,8 +208,8 @@ static PyMethodDef ImageConvertor_methods[] = {
     {"get_option", (PyCFunction)ImageConvertor_get_global, METH_VARARGS, "Get global option"},
     {"convert", (PyCFunction)ImageConvertor_convert, METH_NOARGS, "Convert Image"},
     {"add_callback", (PyCFunction)ImageConvertor_add_callback, METH_VARARGS, "Register callback"},
-    {current_progress_method, (PyCFunction)ImageConvertor_current_progress, METH_NOARGS, "Current progress"},
-    {current_phase_method, (PyCFunction)ImageConvertor_current_phase, METH_NOARGS, "Current phase"},
+    {CURRENT_PROGRSS_METHOD, (PyCFunction)ImageConvertor_current_progress, METH_NOARGS, "Current progress"},
+    {CURRENT_PHASE_METHOD, (PyCFunction)ImageConvertor_current_phase, METH_NOARGS, "Current phase"},
     {NULL}  /* Sentinel */
 };
 

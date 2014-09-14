@@ -61,6 +61,16 @@ static int PDFConvertor_init(PDFConvertor *self, PyObject *args, PyObject *kwds)
 	{
 		return -1;
 	}
+	self->conv_callbacks.error_cb = PyList_New(0);
+	self->conv_callbacks.finish_cb = PyList_New(0);
+	self->conv_callbacks.phase_cb = PyList_New(0);
+	self->conv_callbacks.progress_cb = PyList_New(0);
+	self->conv_callbacks.warning_cb = PyList_New(0);
+	wkhtmltopdf_set_error_callback(self->conv_ptr, callback_error);
+	wkhtmltopdf_set_finished_callback(self->conv_ptr, callback_finished);
+	wkhtmltopdf_set_phase_changed_callback(self->conv_ptr, callback_phase_changed);
+	wkhtmltopdf_set_progress_changed_callback(self->conv_ptr, callback_progress_changed);
+	wkhtmltopdf_set_warning_callback(self->conv_ptr, callback_warning);
 
     return 0;
 }
@@ -233,8 +243,8 @@ static PyMethodDef PDFConvertor_methods[] = {
     {"convert", (PyCFunction)PDFConvertor_convert, METH_NOARGS, "Convert pdf"},
     {"add_page", (PyCFunction)PDFConvertor_add_object, METH_VARARGS, "Add page object"},
 	{"add_callback", (PyCFunction)PDFConvertor_add_callback, METH_VARARGS, "Add finish callback"},
-	{current_progress_method, (PyCFunction)PDFConvertor_current_progress, METH_NOARGS, "Current progress"},
-    {current_phase_method, (PyCFunction)PDFConvertor_current_phase, METH_NOARGS, "Current phase"},
+	{CURRENT_PROGRSS_METHOD, (PyCFunction)PDFConvertor_current_progress, METH_NOARGS, "Current progress"},
+    {CURRENT_PHASE_METHOD, (PyCFunction)PDFConvertor_current_phase, METH_NOARGS, "Current phase"},
     {NULL}  /* Sentinel */
 };
 

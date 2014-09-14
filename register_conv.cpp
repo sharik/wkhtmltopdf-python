@@ -2,12 +2,12 @@
 extern "C" {
 #endif
 #include <Python.h>
+#include "utils.h"
+#include "register_conv.h"
 #ifdef __cplusplus
 }
 #endif
 #include <map>
-#include "register_conv.h"
-#include "utils.h"
 typedef std::map<void*, PyObject *> reg_map_t;
 static reg_map_t reg_map;
 

@@ -1,9 +1,10 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
+#include <Python.h>
 
 extern PyObject* WkhtmltoxError;
 
-extern const char *current_progress_method;
-extern const char *current_phase_method;
+#define CURRENT_PROGRSS_METHOD "current_progress"
+#define CURRENT_PHASE_METHOD "current_phase"
 
 #endif /* __UTILS_H__ */
