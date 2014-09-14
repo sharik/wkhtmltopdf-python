@@ -3,16 +3,7 @@
 #include "imageconv.h"
 #include "utils.h"
 #include "callback.h"
-
-extern PyObject * WkhtmltoxError;
-
-typedef struct {
-	PyObject_HEAD;
-	wkhtmltoimage_global_settings *conv_global;
-	wkhtmltoimage_converter *conv_ptr;
-	convertor_callbacks_t conv_callbacks;
-	page_t page;
-} ImageConvertor;
+#include "register_conv.h"
 
 static PyObject *ImageConvertor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -65,7 +56,10 @@ static int ImageConvertor_init(ImageConvertor *self, PyObject *args, PyObject *k
       PyErr_SetString(WkhtmltoxError, "Couldn't initialize convertor");
       return -1;
     }
-    register_obj(self->conv_ptr, self);
+    if (REGISTER_ERROR_FAIL == register_obj(self->conv_ptr, (PyObject *)self))
+	{
+		return -1;
+	}
 
     return 0;
 }
@@ -96,7 +90,6 @@ static PyObject* ImageConvertor_set_global(ImageConvertor *self, PyObject *args)
 static PyObject* ImageConvertor_get_global(ImageConvertor *self, PyObject *args)
 {
 	const char *key = NULL;
-	PyObject *result;
 	char value[DEFAULT_BUF_LEN] = {0};
 
 
@@ -111,10 +104,7 @@ static PyObject* ImageConvertor_get_global(ImageConvertor *self, PyObject *args)
 		return NULL;
 	}
 
-	result = Py_BuildValue("s", value);
-	Py_XINCREF(result);
-
-	return result;
+	return Py_BuildValue("s", value);
 }
 
 static PyObject *ImageConvertor_convert(ImageConvertor *self)
@@ -136,76 +126,70 @@ static PyObject *ImageConvertor_convert(ImageConvertor *self)
 static PyObject* ImageConvertor_add_callback(ImageConvertor *self, PyObject *args)
 {
 	PyObject *callback;
-	int callback_type;
-	if (!PyArg_ParseTuple(args, "iO", callback_type, &callback))
+	int c_type;
+	if (!PyArg_ParseTuple(args, "iO", c_type, &callback))
 	{
 		PyErr_BadArgument();
-		return;
+		return NULL;
 	}
 	if (0 == PyCallable_Check(callback))
 	{
 		PyErr_BadArgument();
-		return;
+		return NULL;
 	}
-	switch(callback_type)
+	switch(c_type)
 	{
 		case PDF_CALLBACK_WARNING:
 			if (-1 == PyList_Append(self->conv_callbacks.warning_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_ERROR:
 			if (-1 == PyList_Append(self->conv_callbacks.error_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_FINISH:
 			if (-1 == PyList_Append(self->conv_callbacks.finish_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_PROGRESS:
 			if (-1 == PyList_Append(self->conv_callbacks.progress_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_PHASE:
 			if (-1 == PyList_Append(self->conv_callbacks.phase_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		default:
 			PyErr_BadArgument();
-			return;
+			return NULL;
 		
 	}
 	Py_XINCREF(callback);
 	return callback;
+errorconv:
+PyErr_SetString(WkhtmltoxError, "Couldn\'t register callback");
+return NULL;
 }
 
 static PyObject* ImageConvertor_current_progress(ImageConvertor *self)
 {
-	PyStringObject *res;
-	if (NULL = (res = PyString_FromString(wkhtmltoimage_progress_string(self->conv_ptr))))
+	PyObject *res;
+	if (NULL == (res = PyString_FromString(wkhtmltoimage_progress_string(self->conv_ptr))))
 	{
 		Py_RETURN_NONE;
 	}
-	Py_XINCREF(res);
 	return res;
 }
 
-static PyObject* ImageConvertor_current_phase(PDFConvertor *self)
+static PyObject* ImageConvertor_current_phase(ImageConvertor *self)
 {
-	PyObject *res;
 	int phase = wkhtmltoimage_current_phase(self->conv_ptr);
-	res = PyString_FromString(wkhtmltoimage_phase_description(self->conv_ptr, phase));
-	Py_XINCREF(res);
-	return res;
+	return PyString_FromString(wkhtmltoimage_phase_description(self->conv_ptr, phase));
 }
 
 
@@ -221,7 +205,7 @@ static PyMethodDef ImageConvertor_methods[] = {
 
 
 
-static PyTypeObject ImageConvertorType = {
+PyTypeObject ImageConvertorType = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	"pywkhtmltox.ImageConvertor",             /*tp_name*/
 	sizeof(ImageConvertor),             /*tp_basicsize*/

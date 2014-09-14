@@ -4,11 +4,11 @@
 #include <Python.h>
 
 typedef struct {
-	PyListObject *warning_cb;
-	PyListObject *error_cb;
-	PyListObject *finish_cb;
-	PyListObject *progress_cb;
-	PyListObject *phase_cb;
+	PyObject *warning_cb;
+	PyObject *error_cb;
+	PyObject *finish_cb;
+	PyObject *progress_cb;
+	PyObject *phase_cb;
 } convertor_callbacks_t;
 
 typedef enum {

@@ -3,15 +3,7 @@
 #include "pdfconv.h"
 #include "utils.h"
 #include "callback.h"
-
-extern PyObject * WkhtmltoxError;
-
-typedef struct {
-	PyObject_HEAD;
-	wkhtmltopdf_global_settings *conv_global;
-	wkhtmltopdf_converter *conv_ptr;
-	convertor_callbacks_t conv_callbacks;
-} PDFConvertor;
+#include "register_conv.h"
 
 static PyObject *PDFConvertor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -65,7 +57,7 @@ static int PDFConvertor_init(PDFConvertor *self, PyObject *args, PyObject *kwds)
       PyErr_SetString(WkhtmltoxError, "Couldn't initialize convertor");
       return -1;
     }
-    if (REGISTER_ERROR_FAIL == register_obj(self->conv_ptr, self))
+    if (REGISTER_ERROR_FAIL == register_obj(self->conv_ptr, (PyObject *)self))
 	{
 		return -1;
 	}
@@ -83,7 +75,7 @@ static PyObject *PDFConvertor_convert(PDFConvertor *self)
 		char error_msg[40];
 		snprintf(error_msg, 40, "Convert error: %i", result_code);
 		PyErr_SetString(WkhtmltoxError, error_msg);
-		return;
+		return NULL;
 	}
 
 	Py_RETURN_NONE;
@@ -148,27 +140,22 @@ static PyObject* PDFConvertor_set_global(PDFConvertor *self, PyObject *args)
 static PyObject* PDFConvertor_current_progress(PDFConvertor *self)
 {
 	PyObject *res;
-	if (NULL = (res = PyString_FromString(wkhtmltopdf_progress_string(self->conv_ptr))))
+	if (NULL == (res = PyString_FromString(wkhtmltopdf_progress_string(self->conv_ptr))))
 	{
 		Py_RETURN_NONE;
 	}
-	Py_XINCREF(res);
 	return res;
 }
 
 static PyObject* PDFConvertor_current_phase(PDFConvertor *self)
 {
-	PyObject *res;
 	int phase = wkhtmltopdf_current_phase(self->conv_ptr);
-	res = PyString_FromString(wkhtmltopdf_phase_description(self->conv_ptr, phase));
-	Py_XINCREF(res);
-	return res;
+	return PyString_FromString(wkhtmltopdf_phase_description(self->conv_ptr, phase));
 }
 
 static PyObject* PDFConvertor_get_global(PDFConvertor *self, PyObject *args)
 {
 	const char *key = NULL;
-	PyObject *result;
 	char value[DEFAULT_BUF_LEN] = {0};
 
 
@@ -183,65 +170,60 @@ static PyObject* PDFConvertor_get_global(PDFConvertor *self, PyObject *args)
 		return NULL;
 	}
 
-	result = Py_BuildValue("s", value);
-	Py_XINCREF(result);
-
-	return result;
+	return Py_BuildValue("s", value);
 }
 
 static PyObject* PDFConvertor_add_callback(PDFConvertor *self, PyObject *args)
 {
 	PyObject *callback;
-	int callback_type;
-	if (!PyArg_ParseTuple(args, "iO", callback_type, &callback))
+	int callback_type = NULL;
+	if (!PyArg_ParseTuple(args, "Oi", &callback, callback_type))
 	{
 		PyErr_BadArgument();
-		return;
+		return NULL;
 	}
 	if (0 == PyCallable_Check(callback))
 	{
 		PyErr_BadArgument();
-		return;
+		return NULL;
 	}
 	switch(callback_type)
 	{
 		case PDF_CALLBACK_WARNING:
 			if (-1 == PyList_Append(self->conv_callbacks.warning_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_ERROR:
 			if (-1 == PyList_Append(self->conv_callbacks.error_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_FINISH:
 			if (-1 == PyList_Append(self->conv_callbacks.finish_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_PROGRESS:
 			if (-1 == PyList_Append(self->conv_callbacks.progress_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		case PDF_CALLBACK_PHASE:
 			if (-1 == PyList_Append(self->conv_callbacks.phase_cb, callback)) {
-				PyErr_SetObject(WkhtmltoxError, "Couldn\'t register callback");
-				return;
+				goto errorconv;
 			}
 			break;
 		default:
 			PyErr_BadArgument();
-			return;
+			return NULL;
 		
 	}
 	Py_XINCREF(callback);
 	return callback;
+errorconv:
+PyErr_SetString(WkhtmltoxError, "Couldn\'t register callback");
+return NULL;
 }
 
 
@@ -256,7 +238,7 @@ static PyMethodDef PDFConvertor_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject PDFConvertorType = {
+PyTypeObject PDFConvertorType = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	"pywkhtmltox.PDFConvertor",             /*tp_name*/
 	sizeof(PDFConvertor),             /*tp_basicsize*/

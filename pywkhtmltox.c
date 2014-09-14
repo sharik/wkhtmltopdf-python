@@ -4,23 +4,15 @@
 #include "utils.h"
 #include "callback.h"
 
-extern PyObject* WkhtmltoxError;
-extern PyTypeObject PDFConvertorType;
-extern PyTypeObject ImageConvertorType;
-
-
-
 static PyObject * pywkhtmltox_get_version()
 {
 	PyObject * result;
-	result = Py_BuildValue("s", wkhtmltopdf_version());
-	Py_XINCREF(result);
-	return result;
+	return Py_BuildValue("s", wkhtmltopdf_version());
 };
 
 static PyMethodDef pywkhtmltox_methods[] = {
     {"get_version", (PyCFunction)pywkhtmltox_get_version, METH_NOARGS, "Get Wkhtmltox version"},
-    {NULL, NULL}
+    {NULL}
 };
 
 #if PY_MAJOR_VERSION >= 3
@@ -62,11 +54,11 @@ PyMODINIT_FUNC init_pywkhtmltox(void)
 	}
 		
     WkhtmltoxError = PyErr_NewException("_pywkhtmltox.WkhtmltoxError", NULL, NULL);
-	PyModule_AddObject(m, "WkhtmltoxError", (PyObject*)WkhtmltoxError);
 
 	Py_INCREF(&WkhtmltoxError);
 	Py_INCREF(&PDFConvertorType);
 	Py_INCREF(&ImageConvertorType);
+	PyModule_AddObject(m, "WkhtmltoxError", (PyObject*)WkhtmltoxError);
 	PyModule_AddObject(m, "PDFConvertor", (PyObject *) &PDFConvertorType);
 	PyModule_AddObject(m, "ImageConvertor", (PyObject *) &ImageConvertorType);
 
