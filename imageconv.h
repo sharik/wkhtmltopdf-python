@@ -5,7 +5,7 @@
 #include "wkhtmltox/image.h"
 #include "callback.h"
 
-extern PyTypeObject ImageConvertorType;
+PyTypeObject ImageConvertorType;
 
 typedef struct {
 	PyObject_HEAD;

@@ -84,7 +84,7 @@ static PyObject *PDFConvertor_convert(PDFConvertor *self)
 		result_code = wkhtmltopdf_http_error_code(self->conv_ptr);
 		char error_msg[40];
 		snprintf(error_msg, 40, "Convert error: %i", result_code);
-		PyErr_SetString(WkhtmltoxError, error_msg);
+		PyErr_SetString(WkhtmltoxError, &error_msg);
 		return NULL;
 	}
 
@@ -186,8 +186,8 @@ static PyObject* PDFConvertor_get_global(PDFConvertor *self, PyObject *args)
 static PyObject* PDFConvertor_add_callback(PDFConvertor *self, PyObject *args)
 {
 	PyObject *callback;
-	int callback_type = NULL;
-	if (!PyArg_ParseTuple(args, "Oi", &callback, callback_type))
+	int callback_type = -1;
+	if (!PyArg_ParseTuple(args, "Oi", &callback, &callback_type))
 	{
 		PyErr_BadArgument();
 		return NULL;

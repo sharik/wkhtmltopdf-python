@@ -136,8 +136,8 @@ static PyObject *ImageConvertor_convert(ImageConvertor *self)
 static PyObject* ImageConvertor_add_callback(ImageConvertor *self, PyObject *args)
 {
 	PyObject *callback;
-	int c_type;
-	if (!PyArg_ParseTuple(args, "iO", c_type, &callback))
+	int c_type = -1;
+	if (!PyArg_ParseTuple(args, "Oi", callback, &c_type))
 	{
 		PyErr_BadArgument();
 		return NULL;

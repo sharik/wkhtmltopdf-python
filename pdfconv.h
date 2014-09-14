@@ -5,7 +5,7 @@
 #include "wkhtmltox/pdf.h"
 #include "callback.h"
 
-extern PyTypeObject PDFConvertorType;
+PyTypeObject PDFConvertorType;
 
 typedef struct {
 	PyObject_HEAD;
